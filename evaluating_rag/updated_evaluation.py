@@ -1,9 +1,10 @@
+# imports
 from sentence_transformers import SentenceTransformer, util
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import torch
 import json
 
-# Initialize models 
+# initialize models 
 embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 gpt2_model = GPT2LMHeadModel.from_pretrained("gpt2")
@@ -13,7 +14,7 @@ query = "What is the capital of France?"
 retrieved_context = "France is a country in Europe. Its capital city is Paris."
 rag_response = "The capital of France is Paris."
 
-# can be replaced by this while evaluating on a given RAG data:
+# can be replaced by below while evaluating on a given RAG data:
 
 # rag_data = {
 #     "query": user_input,
@@ -23,7 +24,7 @@ rag_response = "The capital of France is Paris."
 # result = evaluate_rag_response(rag_data)
 
 
-# Semantic Similarity Metrics 
+# semantic similarity metrics 
 
 def cosine_sim(a, b):
     emb_a = embed_model.encode(a, convert_to_tensor=True)
@@ -33,7 +34,7 @@ def cosine_sim(a, b):
 faithfulness = cosine_sim(rag_response, retrieved_context)
 relevance = cosine_sim(rag_response, query)
 
-# Fluency / Perplexity Metric 
+ # fluency/perplexity metric 
 def compute_perplexity(text):
     inputs = tokenizer(text, return_tensors="pt")
     with torch.no_grad():
@@ -41,17 +42,16 @@ def compute_perplexity(text):
     return torch.exp(loss).item()
 
 perplexity = compute_perplexity(rag_response)
-fluency = 1 / perplexity  # invert since lower perplexity = better
+fluency = 1 / perplexity  # invert since lower perplexity is better
 
-# Normalize & Combine 
-
-# Normalize fluency roughly between 0-1
+# normalize & combine 
+# normalize fluency roughly between 0-1
 fluency_score = min(1.0, fluency * 10)
 
-# Weighted composite score 
+# weighted composite score 
 final_score = round((0.4 * faithfulness + 0.4 * relevance + 0.2 * fluency_score), 3)
 
-# Output 
+# output 
 
 evaluation = {
     "faithfulness": round(faithfulness, 3),
@@ -61,3 +61,15 @@ evaluation = {
 }
 
 print(json.dumps(evaluation, indent=2))
+
+
+# output:
+# {
+#   "faithfulness": 0.904,
+#   "relevance": 0.879,
+#   "fluency": 0.224,
+#   "final_score": 0.758
+# }
+
+# these scores are semantic and reference-free 
+# higher = better response quality
